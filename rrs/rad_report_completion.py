@@ -10,12 +10,10 @@ import sys
 import torch
 from transformers import LlamaTokenizer
 
-from llama_recipes.inference.chat_utils import read_dialogs_from_file, format_tokens
 from llama_recipes.inference.model_utils import load_model, load_peft_model
-from llama_recipes.inference.safety_utils import get_safety_checker
 
 # Import helper functions for radiology report generation
-from .rrs_utils import generate_prompt_message, random_sample_selection_v2
+from rrs_utils import generate_prompt_message, random_sample_selection_v2, generate_tokens
 
 # Import dependencies
 import time
@@ -52,8 +50,8 @@ def main(
     **kwargs
 ):
     
-    root = 'C:/Users/varu/github/llama-radiology-report-summarization/rrs/'
-    
+    root = '/home/varu/rrs/llama-radiology-report-summarization/rrs/'
+
     ########################################################################
     #                             LOAD DATA                                #
     ########################################################################
@@ -159,7 +157,7 @@ def main(
             if len(good_reponse) == 0 and len(bad_reponse) == 0:
                 prompt_message = generate_prompt_message(test_findings, near_samples=similar_samples)
             
-                prompt_tokens = format_tokens(prompt_message, tokenizer)
+                prompt_tokens = generate_tokens(prompt_message, tokenizer)
             
                 with torch.no_grad():
                     tokens= torch.tensor(prompt_tokens).long()
@@ -183,7 +181,7 @@ def main(
             else:
                 prompt_message = generate_prompt_message(test_findings, near_samples=similar_samples, interactive=interactive, former_good_response=good_reponse, former_bad_response=bad_reponse)
 
-                prompt_tokens = format_tokens(prompt_message, tokenizer)
+                prompt_tokens = generate_tokens(prompt_message, tokenizer)
             
                 with torch.no_grad():
                     tokens= torch.tensor(prompt_tokens).long()
@@ -204,15 +202,7 @@ def main(
 
                     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-
-            if reponse == -2:
-                print("exceed length, pop 2 similar examples")
-                # list_len = len(similar_samples)
-                for i in range(2):
-                    similar_samples.pop()
-                continue
-
-            fotmatted_response = reponse.replace("IMPRESSION:", "")
+            fotmatted_response = response[response.rindex('[/INST]')+len('[/INST]'):].strip()
 
             compare_scores = []
             for near_sa in similar_samples:
@@ -267,7 +257,7 @@ def main(
         print(Test_start, Test_end)
 
         # load test data
-        df_test_csv = pd.read_csv('baseline_sections_test_V2_Clean.csv')
+        df_test_csv = pd.read_csv('data/baseline_sections_test_V2_Clean.csv')
         df_test_csv = df_test_csv[Test_start:Test_end]
 
         # parallel
