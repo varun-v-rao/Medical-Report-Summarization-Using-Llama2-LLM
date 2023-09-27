@@ -249,107 +249,88 @@ def main(
         # print("max score=", max_score, "\n")
         return row_index, final_best_response
 
-    ################## OLD CODE ##############################
-    if prompt_file is not None:
-        assert os.path.exists(
-            prompt_file
-        ), f"Provided Prompt file does not exist {prompt_file}"
+    # 'mid_path' is the experiment name. InteractV6: Prompt version. 2Snear: Two-stage similar selection.
+    mid_path = "InteractV6_2Snear{}-{}_1Gd8Bds_i{}r{}_{}".format(one_near_k_samples, two_near_k_samples, interactive_times, rouge_thre, rouge_type)
+    save_root = osp.join(root, mid_path)
+    if not osp.exists(save_root):
+        os.makedirs(save_root)
+    print(save_root)
 
-        dialogs= read_dialogs_from_file(prompt_file)
+    # To avoid accidental interruption of the program and loss of results, I split it into multiple patches.
+    for loop_index in range(7):
+        print(time.strftime("%Y-%m-%d %H:%M:%S"))
+        Test_start = loop_index * 250
+        Test_end = (loop_index + 1) * 250
 
-    elif not sys.stdin.isatty():
-        dialogs = "\n".join(sys.stdin.readlines())
-    else:
-        print("No user prompt provided. Exiting.")
-        sys.exit(1)
+        if Test_end > len(test_label_space):
+            Test_end = len(test_label_space)
+        print(Test_start, Test_end)
 
-    print(f"User dialogs:\n{dialogs}")
-    print("\n==================================\n")
+        # load test data
+        df_test_csv = pd.read_csv('baseline_sections_test_V2_Clean.csv')
+        df_test_csv = df_test_csv[Test_start:Test_end]
 
+        # parallel
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = dict(tqdm(executor.map(process_row_with_random_choice_samples, df_test_csv.iterrows()), total=len(df_test_csv)))
 
-    # Set the seeds for reproducibility
-    torch.cuda.manual_seed(seed)
-    torch.manual_seed(seed)
-    model = load_model(model_name, quantization)
-    if peft_model:
-        model = load_peft_model(model, peft_model)
-    if use_fast_kernels:
-        """
-        Setting 'use_fast_kernels' will enable
-        using of Flash Attention or Xformer memory-efficient kernels 
-        based on the hardware being used. This would speed up inference when used for batched inputs.
-        """
-        try:
-            from optimum.bettertransformer import BetterTransformer
-            model = BetterTransformer.transform(model)   
-        except ImportError:
-            print("Module 'optimum' not found. Please install 'optimum' it before proceeding.")
+        # same order as the input
+        df_test_csv['summary'] = df_test_csv.index.map(results.get)
 
-    tokenizer = LlamaTokenizer.from_pretrained(model_name)
-    tokenizer.add_special_tokens(
-        {
-         
-            "pad_token": "<PAD>",
-        }
-    )
-    
-    chats = format_tokens(dialogs, tokenizer)
+        # out_file_name is name of split csv
+        out_file_name = "test{}_{}_IntactV6_2Snear{}-{}_1Gd8Bds_i{}r{}_{}.csv".format(Test_start, Test_end, one_near_k_samples, two_near_k_samples, interactive_times, rouge_thre, rouge_type)
+        output_file = osp.join(save_root, "{}".format(out_file_name))
+        df_test_csv.to_csv(output_file, index=False)
 
-    with torch.no_grad():
-        for idx, chat in enumerate(chats):
-            safety_checker = get_safety_checker(enable_azure_content_safety,
-                                        enable_sensitive_topics,
-                                        enable_saleforce_content_safety,
-                                        )
-            # Safety check of the user prompt
-            safety_results = [check(dialogs[idx][0]["content"]) for check in safety_checker]
-            are_safe = all([r[1] for r in safety_results])
-            if are_safe:
-                print(f"User prompt deemed safe.")
-                print("User prompt:\n", dialogs[idx][0]["content"])
-                print("\n==================================\n")
-            else:
-                print("User prompt deemed unsafe.")
-                for method, is_safe, report in safety_results:
-                    if not is_safe:
-                        print(method)
-                        print(report)
-                print("Skipping the inferece as the prompt is not safe.")
-                sys.exit(1)  # Exit the program with an error status
-            tokens= torch.tensor(chat).long()
-            tokens= tokens.unsqueeze(0)
-            tokens= tokens.to("cuda:0")
-            outputs = model.generate(
-                input_ids=tokens,
-                max_new_tokens=max_new_tokens,
-                do_sample=do_sample,
-                top_p=top_p,
-                temperature=temperature,
-                use_cache=use_cache,
-                top_k=top_k,
-                repetition_penalty=repetition_penalty,
-                length_penalty=length_penalty,
-                **kwargs
-            )
+        rouge_e = evaluate.load('rouge')
 
-            output_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        rouge_scores = []
+        for index, row in df_test_csv.iterrows():
+            label = row['impression']
+            prediction = row['summary']
+            prediction = prediction.replace("IMPRESSION:", "")
+            score = rouge_e.compute(predictions=[prediction], references=[label], rouge_types=["rouge1", "rouge2", "rougeL"], use_stemmer=True)
+            rouge_scores.append(score)
 
-            # Safety check of the model output
-            safety_results = [check(output_text) for check in safety_checker]
-            are_safe = all([r[1] for r in safety_results])
-            if are_safe:
-                print("User input and model output deemed safe.")
-                print(f"Model output:\n{output_text}")
-                print("\n==================================\n")
+        # mean
+        mean_rouge1 = sum([score['rouge1'] for score in rouge_scores]) / len(rouge_scores)
+        mean_rouge2 = sum([score['rouge2'] for score in rouge_scores]) / len(rouge_scores)
+        mean_rougeL = sum([score['rougeL'] for score in rouge_scores]) / len(rouge_scores)
 
-            else:
-                print("Model output deemed unsafe.")
-                for method, is_safe, report in safety_results:
-                    if not is_safe:
-                        print(method)
-                        print(report)
+        print(f'R-1: {mean_rouge1:.4f}', f',R-2: {mean_rouge2:.4f}', f',R-L: {mean_rougeL:.4f}')
 
+    # Final test for all csv data
 
+    print("### Final Test for All CSVs ###")
+
+    rouge_e = evaluate.load('rouge')
+
+    contact_list = []
+    range_list = [0, 250, 500, 750, 1000, 1250, 1500, 1603]
+    for loop_index in range(len(range_list)-1):
+        Test_start = range_list[loop_index]
+        Test_end = range_list[loop_index + 1]
+        out_file_name = "test{}_{}_IntactV6_2Snear{}-{}_1Gd8Bds_i{}r{}_{}.csv".format(Test_start, Test_end, one_near_k_samples, two_near_k_samples, interactive_times, rouge_thre, rouge_type)
+        test_pd = pd.read_csv(osp.join(save_root, out_file_name))
+        contact_list.append(test_pd)
+
+    df_save_csv = pd.concat(contact_list)
+    df_save_csv.to_csv(osp.join(save_root, "testAll_IntactV6_2Snear{}-{}_1Gd8Bds_i{}r{}_{}.csv".format(one_near_k_samples, two_near_k_samples, interactive_times, rouge_thre, rouge_type)), index=False)
+
+    rouge_scores = []
+    for index, row in df_save_csv.iterrows():
+        label = row['impression']
+        prediction = row['summary']
+        prediction = prediction.replace("IMPRESSION:", "")
+        score = rouge_e.compute(predictions=[prediction], references=[label], rouge_types=["rouge1", "rouge2", "rougeL"], use_stemmer=True)
+        rouge_scores.append(score)
+
+    # mean
+    mean_rouge1 = sum([score['rouge1'] for score in rouge_scores]) / len(rouge_scores)
+    mean_rouge2 = sum([score['rouge2'] for score in rouge_scores]) / len(rouge_scores)
+    mean_rougeL = sum([score['rougeL'] for score in rouge_scores]) / len(rouge_scores)
+
+    print(f'R-1: {mean_rouge1:.4f}', f'R-2: {mean_rouge2:.4f}', f'R-L: {mean_rougeL:.4f}')
 
 if __name__ == "__main__":
     fire.Fire(main)
