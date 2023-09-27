@@ -1,6 +1,13 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\examples",
+    "\\examples\\chat_completion",
+    "\\rrs",
+    "\\src",
+    "\\src\\llama_recipes",
+    "\\src\\llama_recipes\\inference"
   ],
+  "SelectedNode": "\\rrs\\rrs_utils.py",
   "PreviewInSolutionExplorer": false
 }

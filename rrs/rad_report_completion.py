@@ -6,6 +6,7 @@
 import fire
 import os
 import sys
+import os.path as osp
 
 import torch
 from transformers import LlamaTokenizer

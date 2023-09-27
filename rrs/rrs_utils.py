@@ -10,10 +10,12 @@ import rouge
 
 def generate_prompt_message(text, near_samples=None, interactive=False, former_good_response=None, former_bad_response=None):
 
+    #dynamic_messages = [
+    #    {"role": "system", "content": "You are a chest radiologist that identifies the main findings and diagnosis or impression based on the given\
+    #    FINDINGS section of the chest X-ray report, which details the radiologists' assessment of the chest X-ray image. \
+    #    Please ensure that your response is concise and does not exceed the length of the FINDINGS."}]
     dynamic_messages = [
-        {"role": "system", "content": "You are a chest radiologist that identify the main findings and diagnosis or impression based on the given\
-        FINDINGS section of the chest X-ray report, which details the radiologists' assessment of the chest X-ray image. \
-        Please ensure that your response is concise and does not exceed the length of the FINDINGS."}]
+        {"role": "system", "content": "You are a chest radiologist that identifies the main impression based on the given FINDINGS section of the chest X-ray report. Please ensure that your response is concise and does not exceed the length of the FINDINGS."}]
 
     if near_samples is not None:
         dynamic_messages.append({"role": "user", "content": "Here are some examples. Please learn how to write IMPRESSION in these examples, and \
