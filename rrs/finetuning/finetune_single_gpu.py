@@ -20,7 +20,6 @@ def main(
     use_cache: bool=False,  #[optional] Whether or not the model should use the past last key/values attentions Whether or not the model should use the past last key/values attentions (if applicable to the model) to speed up decoding.
     enable_profiler: bool= False,
     output_dir: str="tmp/llama-finetune-output"
-    **kwargs
 ):
     torch.cuda.manual_seed(seed)
     torch.manual_seed(seed)
