@@ -153,3 +153,6 @@ def main(
 
     res = {key: value.mid.fmeasure * 100 for key, value in rouge_output.items()}
     print({k: round(v, 4) for k, v in res.items()})
+
+if __name__ == "__main__":
+    fire.Fire(main)
