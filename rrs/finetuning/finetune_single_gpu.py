@@ -2,8 +2,12 @@
 
 import fire
 import torch
+import datasets
+import numpy as np
 from transformers import TrainerCallback
 from contextlib import nullcontext
+from nltk.tokenize import wordpunct_tokenize
+from radgraph import F1RadGraph
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from transformers import default_data_collator, Trainer, TrainingArguments
@@ -19,6 +23,7 @@ def main(
     seed: int=42, #seed value for reproducibility
     use_cache: bool=False,  #[optional] Whether or not the model should use the past last key/values attentions Whether or not the model should use the past last key/values attentions (if applicable to the model) to speed up decoding.
     enable_profiler: bool= False,
+    mini_test: bool=False,
     output_dir: str="tmp/llama-finetune-output"
 ):
     torch.cuda.manual_seed(seed)
@@ -52,6 +57,11 @@ def main(
 
     #valid_dataset = preprocess_dataset('mimic-cxr',tokenizer,'test')
     #print(f'Number of validation samples: {len(valid_dataset)}')
+
+    if mini_test:
+        num_samples = int(0.25*len(train_dataset))
+        train_dataset = train_dataset.select(range(num_samples))
+        print(f'Number of training samples: {len(train_dataset)}')
 
     ### PREPARE MODEL FOR PEFT
     model.train()
@@ -123,7 +133,7 @@ def main(
 
     ### SAVE MODEL
     model.save_pretrained(output_dir)
-    tokenizer.save_pretrained(output_dir)
+    #tokenizer.save_pretrained(output_dir)
 
     ### EVALUATE TEST SET
     def generate_summary(sample):
@@ -140,18 +150,46 @@ def main(
         }
 
     test_dataset = preprocess_test_dataset('mimic-cxr',tokenizer,'test')
+    
+    if mini_test:
+        num_samples = int(0.25*len(test_dataset))
+        test_dataset = test_dataset.select(range(num_samples))
+        print(f'Number of test samples: {len(test_dataset)}')
+
+    
     results = test_dataset.map(generate_summary, remove_columns=list(test_dataset.features))
 
-    # load rouge for validation
-    rouge = datasets.load_metric("rouge")
+    def process_impression(impression):
+        impression = impression.lower()
+        return ' '.join(wordpunct_tokenize(impression))
 
     pred_str = results["pred"]
+    pred_str = list(map(process_impression,pred_str))
     label_str = results["summary"]
 
+    ###################################
+    rouge = datasets.load_metric("rouge")
     rouge_output = rouge.compute(predictions=pred_str, references=label_str)
 
     res = {key: value.mid.fmeasure * 100 for key, value in rouge_output.items()}
+    print('ROUGE:')
     print({k: round(v, 4) for k, v in res.items()})
+
+    ##################################
+    bertscore = datasets.load_metric("bertscore")
+    bertscore_output = bertscore.compute(predictions=pred_str, references=label_str, lang='en')
+    res = {key: np.asarray(value).mean()*100 for key, value in bertscore_output.items() if key != 'hashcode'}
+    print('BertScore:')
+    print({k: round(v,4) for k, v in res.items()})
+
+    #################################
+    f1radgraph = F1RadGraph(reward_level="partial")
+    score, _, hypothesis_annotation_lists, reference_annotation_lists = f1radgraph(hyps=pred_str,
+                                                                                refs=label_str)
+    print("F1RadGraph:")
+    print(score*100)
+    
+    # Print Samples
 
 if __name__ == "__main__":
     fire.Fire(main)
