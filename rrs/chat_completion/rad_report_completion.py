@@ -100,12 +100,17 @@ def main(
         }
     )
 
+    B_INST, E_INST = "[INST]", "[/INST]"
+    B_SYS, E_SYS = "<<SYS>>\n", "\n<</SYS>>\n\n"
+    tokenizer.add_tokens([B_INST, E_INST, B_SYS, E_SYS], special_tokens=True)
+    model.resize_token_embeddings(len(tokenizer))
+
     # Pre-defined parameters
     interactive = True
-    interactive_times = 17
-    rouge_thre = 0.7
-    one_near_k_samples = 200
-    two_near_k_samples = 14
+    interactive_times = 10#17
+    rouge_thre = 0.35#0.7
+    one_near_k_samples = 100#200
+    two_near_k_samples = 5#14
     rouge_type = "rouge-1"
     rouge= Rouge()
 
@@ -203,7 +208,8 @@ def main(
 
                     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-            fotmatted_response = response[response.rindex('[/INST]')+len('[/INST]'):].strip()
+            #fotmatted_response = response[response.rindex('[/INST]')+len('[/INST]'):].strip()
+            fotmatted_response = response[response.rindex(':')+len(':'):].strip()
 
             compare_scores = []
             for near_sa in similar_samples:
