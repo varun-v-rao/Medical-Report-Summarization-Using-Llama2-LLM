@@ -209,7 +209,8 @@ def main(
                     response = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
             #fotmatted_response = response[response.rindex('[/INST]')+len('[/INST]'):].strip()
-            fotmatted_response = response[response.rindex(':')+len(':'):].strip()
+            #fotmatted_response = response[response.rindex(':')+len(':'):].strip()
+            fotmatted_response = response[response.rindex('IMPRESSION')+len('IMPRESSION:'):].strip()
 
             compare_scores = []
             for near_sa in similar_samples:
