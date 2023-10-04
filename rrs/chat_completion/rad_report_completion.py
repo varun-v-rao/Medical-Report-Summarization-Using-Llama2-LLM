@@ -269,8 +269,9 @@ def main(
         df_test_csv = df_test_csv[Test_start:Test_end]
 
         # parallel
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            results = dict(tqdm(executor.map(process_row_with_random_choice_samples, df_test_csv.iterrows()), total=len(df_test_csv)))
+        #with concurrent.futures.ThreadPoolExecutor() as executor:
+            #results = dict(tqdm(executor.map(process_row_with_random_choice_samples, df_test_csv.iterrows()), total=len(df_test_csv)))
+        results = dict(tqdm(map(process_row_with_random_choice_samples, df_test_csv.iterrows()), total=len(df_test_csv)))
 
         # same order as the input
         df_test_csv['summary'] = df_test_csv.index.map(results.get)
