@@ -15,7 +15,7 @@ def generate_prompt_message(text, near_samples=None, interactive=False, former_g
     #    FINDINGS section of the chest X-ray report, which details the radiologists' assessment of the chest X-ray image. \
     #    Please ensure that your response is concise and does not exceed the length of the FINDINGS."}]
     dynamic_messages = [
-        {"role": "system", "content": "You are a chest radiologist that identifies the main impression based on the given FINDINGS section of the chest X-ray report. Please ensure that your response is concise and does not exceed the length of the FINDINGS."}]
+        {"role": "system", "content": "You are a chest radiologist that identifies the main impression based on the given FINDINGS section of the chest X-ray report. Please ensure that your response is concise, does not include any information other than the IMPRESSION, and does not exceed the length of the FINDINGS."}]
 
     if near_samples is not None:
         dynamic_messages.append({"role": "user", "content": "Here are some examples. Please learn how to write IMPRESSION in these examples, and \
@@ -38,7 +38,7 @@ def generate_prompt_message(text, near_samples=None, interactive=False, former_g
         if former_bad_response is not None:
             for index, item in enumerate(former_bad_response):
                 dynamic_messages.append({"role": "assistant", "content": "IMPRESSION:\n{}".format(item["summarize"])})
-                dynamic_messages.append({"role": "user", "content": "Above is a bad impression of the FINDINGS section:"})
+                dynamic_messages.append({"role": "user", "content": "Above is a bad impression of the FINDINGS section"})
 
             if len(former_good_response) == 0:
                 dynamic_messages.append({"role": "assistant", "content": "Apologies for any confusion. Let's attempt the summary again"})
