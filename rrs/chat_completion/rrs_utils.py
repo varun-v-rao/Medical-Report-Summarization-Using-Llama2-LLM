@@ -34,7 +34,37 @@ def generate_prompt_message(text, near_samples=None, interactive=False, former_g
     else:
         dynamic_messages.append({"role": "user", "content": "What are the main findings and diagnosis or impression based on the given Finding in chest \
                         X-ray report: \nFINDINGS:\n{}".format(text)})
+        
+        if former_bad_response is not None:
+            for index, item in enumerate(former_bad_response):
+                dynamic_messages.append({"role": "assistant", "content": "IMPRESSION:\n{}".format(item["summarize"])})
+                dynamic_messages.append({"role": "user", "content": "Above is a bad impression of the FINDINGS section:"})
 
+            if len(former_good_response) == 0:
+                dynamic_messages.append({"role": "assistant", "content": "Apologies for any confusion. Let's attempt the summary again"})
+                dynamic_messages.append({"role": "user", "content": "Please give another impression of the FINDINGS above. \
+                It is important to note that your answer should avoid being consistent with the bad impression above. \
+                Please pay particular attention to the consistent use of phrases in the above examples"})
+            # else:
+            #   dynamic_messages.append({"role": "user", "content": "Please give another impression based on the above FINDINGS.\
+            #         Try to refer to the good response above and avoid the same bad response as above."})
+
+        if former_good_response is not None:
+            for index, item in enumerate(former_good_response):
+                #dynamic_messages.append({"role": "user", "content": "Below is an excellent impression of the FINDINGS above:"})
+                dynamic_messages.append({"role": "assistant", "content": "IMPRESSION:\n{}".format(item["summarize"])})
+                #dynamic_messages.append({"role": "user", "content": "This is an excellent impression of the FINDINGS section"})
+            if len(former_bad_response) == 0:
+                dynamic_messages.append({"role": "user", "content": "This is an excellent impression, \
+                    please give another impression in this format, and do not exceed the length of this impression.\
+                    Please pay particular attention to the consistent use of phrases in the above examples"})
+            else:
+                dynamic_messages.append({"role": "user", "content": "Please give another impression of the FINDINGS above. \
+                    It is important to note that your answer should avoid being consistent with the bad impression above, \
+                    but should be consistent with the excellent impression above, and do not exceed the length of the excellent impression. \
+                    And please pay particular attention to the consistent use of phrases in the above examples"})
+
+        '''
         if former_bad_response is not None:
             for index, item in enumerate(former_bad_response):
                 dynamic_messages.append({"role": "user", "content": "Below is a bad impression of the FINDINGS above:"})
@@ -52,7 +82,7 @@ def generate_prompt_message(text, near_samples=None, interactive=False, former_g
             for index, item in enumerate(former_good_response):
                 dynamic_messages.append({"role": "user", "content": "Below is an excellent impression of the FINDINGS above:"})
                 dynamic_messages.append({"role": "assistant", "content": "IMPRESSION:\n{}".format(item["summarize"])})
-                # dynamic_messages.append({"role": "user", "content": "This is a excellent impression, please give another clearer impression in this format."})
+                #dynamic_messages.append({"role": "user", "content": "This is a excellent impression, please give another clearer impression in this format."})
             if len(former_bad_response) == 0:
                 dynamic_messages.append({"role": "user", "content": "This is an excellent impression, \
                     please give another impression in this format, and do not exceed the length of this impression.\
@@ -62,7 +92,7 @@ def generate_prompt_message(text, near_samples=None, interactive=False, former_g
                     It is important to note that your answer should avoid being consistent with the bad impression above, \
                     but should be consistent with the excellent impression above, and do not exceed the length of the excellent impression. \
                     And please pay particular attention to the consistent use of phrases in the above examples"})
-
+        ''''
     return dynamic_messages
 
 
