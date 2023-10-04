@@ -92,7 +92,7 @@ def generate_prompt_message(text, near_samples=None, interactive=False, former_g
                     It is important to note that your answer should avoid being consistent with the bad impression above, \
                     but should be consistent with the excellent impression above, and do not exceed the length of the excellent impression. \
                     And please pay particular attention to the consistent use of phrases in the above examples"})
-        ''''
+        '''
     return dynamic_messages
 
 
