@@ -26,7 +26,42 @@ import concurrent.futures
 
 from rouge import Rouge
 import rouge
+from nltk.tokenize import wordpunct_tokenize
+from radgraph import F1RadGraph
 
+def process_impression(impression):
+    impression = impression.lower()
+    return ' '.join(wordpunct_tokenize(impression))
+
+def compute_metrics(df):
+    pred_str = list(df['summary'])
+    pred_str = list(map(process_impression,pred_str))
+
+    label_str = list(df['impression'])
+    label_str = list(map(process_impression,label_str))
+
+    ###################################
+    rouge = evaluate.load("rouge")
+    rouge_output = rouge.compute(predictions=pred_str, references=label_str)
+    #print(rouge_output)
+    res = {key: value * 100 for key, value in rouge_output.items()}
+    print('ROUGE:')
+    print({k: round(v, 4) for k, v in res.items()})
+
+    ##################################
+    bertscore = evaluate.load("bertscore")
+    bertscore_output = bertscore.compute(predictions=pred_str, references=label_str, lang='en')
+    #print(bertscore_output)
+    res = {key: np.asarray(value).mean()*100 for key, value in bertscore_output.items() if key != 'hashcode'}
+    print('BertScore:')
+    print({k: round(v,4) for k, v in res.items()})
+
+    #################################
+    f1radgraph = F1RadGraph(reward_level="partial")
+    score, _, hypothesis_annotation_lists, reference_annotation_lists = f1radgraph(hyps=pred_str,
+                                                                                refs=label_str)
+    print("F1RadGraph:")
+    print(score*100)
 
 def main(
     model_name,
@@ -281,9 +316,14 @@ def main(
         output_file = osp.join(save_root, "{}".format(out_file_name))
         df_test_csv.to_csv(output_file, index=False)
 
+        compute_metrics(df_test_csv)
+        '''
         rouge_e = evaluate.load('rouge')
+        bertscore = evaluate.load("bertscore")
+        f1radgraph = F1RadGraph(reward_level="partial")
 
         rouge_scores = []
+
         for index, row in df_test_csv.iterrows():
             label = row['impression']
             prediction = row['summary']
@@ -297,6 +337,7 @@ def main(
         mean_rougeL = sum([score['rougeL'] for score in rouge_scores]) / len(rouge_scores)
 
         print(f'R-1: {mean_rouge1:.4f}', f',R-2: {mean_rouge2:.4f}', f',R-L: {mean_rougeL:.4f}')
+        '''
 
     # Final test for all csv data
     '''
