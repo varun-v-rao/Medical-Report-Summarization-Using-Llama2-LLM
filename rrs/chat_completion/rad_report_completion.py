@@ -32,7 +32,7 @@ def main(
     model_name,
     peft_model: str=None,
     quantization: bool=False,
-    max_new_tokens =256, #The maximum numbers of tokens to generate
+    max_new_tokens =512, #The maximum numbers of tokens to generate
     min_new_tokens:int=0, #The minimum numbers of tokens to generate
     prompt_file: str=None,
     seed: int=42, #seed value for reproducibility
@@ -255,7 +255,7 @@ def main(
     print(save_root)
 
     # To avoid accidental interruption of the program and loss of results, I split it into multiple patches.
-    for loop_index in range(7):
+    for loop_index in range(1): # old range = 7
         print(time.strftime("%Y-%m-%d %H:%M:%S"))
         Test_start = loop_index * 250
         Test_end = (loop_index + 1) * 250
@@ -299,13 +299,14 @@ def main(
         print(f'R-1: {mean_rouge1:.4f}', f',R-2: {mean_rouge2:.4f}', f',R-L: {mean_rougeL:.4f}')
 
     # Final test for all csv data
-
+    '''
     print("### Final Test for All CSVs ###")
 
     rouge_e = evaluate.load('rouge')
 
     contact_list = []
-    range_list = [0, 250, 500, 750, 1000, 1250, 1500, 1603]
+    #range_list = [0, 250, 500, 750, 1000, 1250, 1500, 1603]
+    range_list = [0, 250]
     for loop_index in range(len(range_list)-1):
         Test_start = range_list[loop_index]
         Test_end = range_list[loop_index + 1]
@@ -330,6 +331,7 @@ def main(
     mean_rougeL = sum([score['rougeL'] for score in rouge_scores]) / len(rouge_scores)
 
     print(f'R-1: {mean_rouge1:.4f}', f'R-2: {mean_rouge2:.4f}', f'R-L: {mean_rougeL:.4f}')
+    '''
 
 if __name__ == "__main__":
     fire.Fire(main)
