@@ -67,7 +67,7 @@ def main(
     model_name,
     peft_model: str=None,
     quantization: bool=False,
-    max_new_tokens =512, #The maximum numbers of tokens to generate
+    max_new_tokens =1024, #The maximum numbers of tokens to generate
     min_new_tokens:int=0, #The minimum numbers of tokens to generate
     prompt_file: str=None,
     seed: int=42, #seed value for reproducibility
@@ -247,14 +247,18 @@ def main(
             #fotmatted_response = response[response.rindex(':')+len(':'):].strip()
             fotmatted_response = response[response.rindex('IMPRESSION')+len('IMPRESSION:'):].strip()
 
-            compare_scores = []
-            for near_sa in similar_samples:
-                scores = rouge.get_scores([fotmatted_response], [near_sa["impression"]])
-                single_score = scores[0][rouge_type]["f"]
-                compare_scores.append(single_score)
+            if fotmatted_response is not None:
+                compare_scores = []
+                for near_sa in similar_samples:
+                    scores = rouge.get_scores([fotmatted_response], [near_sa["impression"]])
+                    single_score = scores[0][rouge_type]["f"]
+                    compare_scores.append(single_score)
 
-            # print(compare_scores)
-            score = np.mean(np.array(compare_scores))
+                # print(compare_scores)
+                score = np.mean(np.array(compare_scores))
+            else:
+                score = 0.0
+                fotmatted_response = ""
 
             all_response_score.append(score)
             all_response.append(fotmatted_response)
