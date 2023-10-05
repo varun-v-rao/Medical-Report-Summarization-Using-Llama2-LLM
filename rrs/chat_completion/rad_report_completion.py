@@ -247,7 +247,8 @@ def main(
             #fotmatted_response = response[response.rindex(':')+len(':'):].strip()
             fotmatted_response = response[response.rindex('IMPRESSION')+len('IMPRESSION:'):].strip()
 
-            if fotmatted_response is not None:
+            # Deal with empty response
+            if len(fotmatted_response) > 5 :
                 compare_scores = []
                 for near_sa in similar_samples:
                     scores = rouge.get_scores([fotmatted_response], [near_sa["impression"]])
@@ -258,7 +259,7 @@ def main(
                 score = np.mean(np.array(compare_scores))
             else:
                 score = 0.0
-                fotmatted_response = ""
+                fotmatted_response = "empty"
 
             all_response_score.append(score)
             all_response.append(fotmatted_response)
